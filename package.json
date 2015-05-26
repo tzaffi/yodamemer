@@ -1,0 +1,30 @@
+{
+  "name": "yodamemer",
+  "version": "1.0.0",
+  "description": "Combine some api's exposed in https://github.com/tzaffi/my-mashapes to create a Yoda (and Darth Maul) meme generator that takes sentiment into account",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tzaffi/yodamemer.git"
+  },
+  "keywords": [
+    "yoda",
+    "meme",
+    "darth",
+    "maul",
+    "sentiment-analysis",
+    "apimeme"
+  ],
+  "author": "Zeph Grunschlag",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tzaffi/yodamemer/issues"
+  },
+  "homepage": "https://github.com/tzaffi/yodamemer",
+  "devDependencies": {
+    "express": "^4.12.4"
+  }
+}
