@@ -10,14 +10,21 @@
  * Note that each step above is supplied by one of my 
  * [mashave web services](https://github.com/tzaffi/my-mashapes)
  *
- * USAGE: node index.js SERVER_PORT YODA_URL SENTIMENT_URL MEME_URL 
+ * USAGE: node index.js SERVER_PORT YODA_URL SENTIMENT_URL MEME_URL path/to/config.json
+ * USAGE: node intermediator.js PORT path/to/config.json
+ *
+ * config-json should look like:
+{
+  "apiKeyName": "monkey-api-key",
+  "apiKeyValue": "ZephaniahWasABullfrog",
+} 
  *
  *************/
 
 //var _ = require('lodash');
 //var querystring = require('querystring');
 var express = require('express');
-//var unirest = require('unirest');
+var unirest = require('unirest');
 var app = express();
 
 /**
@@ -59,23 +66,64 @@ function mashapeURL(req, config){
 }
 **/
 
+function myMashapeURL(base, params){
+    return [base].concat(params).join("/")
+}
 
-var usage = "USAGE: node index.js SERVER_PORT YODA_URL SENTIMENT_URL MEME_URL"
+var usage = "USAGE: node index.js SERVER_PORT YODA_URL SENTIMENT_URL MEME_URL path/to/config.js"
 console.log(usage);
 
 var port = parseInt(process.argv[2]);
 var yodaURL = process.argv[3];
 var sentimentURL = process.argv[4];
 var memeURL = process.argv[5];
+var configPath = "./" + process.argv[6];
+var config = require(configPath);
+
+var yodaContentType = "text/plain";
+var sentimentContentType = "application/json";
+var memeContentType = "image/jpeg";
 
 console.log("process.argv: ", process.argv);
-
 console.log("Starting intermediator on port ", port);
 console.log("Yoda API URL is: ", yodaURL);
-console.log("Sentiment API URL is: ", sentimentURL);
-console.log("Meme API URL is: ", memeURL);
+console.log("Yoda content type is: ", yodaContentType);
 
-process.exit(0);
+console.log("Sentiment API URL is: ", sentimentURL);
+console.log("Sentiment content type is: ", sentimentContentType);
+
+console.log("Meme API URL is: ", memeURL);
+console.log("Meme content type is: ", memeContentType);
+
+console.log("Configuration ", configPath, " says:\n", config);
+
+
+console.log("TESTING myMashapeURL() with ", yodaURL, " and ", ["Ted Cruz is annoyingly smart."]);
+console.log( "yodaURL is: ", myMashapeURL(yodaURL,  ["Ted Cruz is annoyingly smart."]) );
+
+console.log("TESTING myMashapeURL() with ", sentimentURL, " and ", ["Ted Cruz is annoyingly smart."]);
+console.log( "sentimentURL is: ", myMashapeURL(sentimentURL,  ["Ted Cruz is annoyingly smart."]) );
+
+console.log("TESTING myMashapeURL() with ", memeURL, " and ", ["Darth Maul", "Ted Cruz is", "annoyingly smart"]);
+console.log( "memeURL is: ", myMashapeURL(memeURL, ["Darth Maul", "Ted Cruz is", "annoyingly smart"]) );
+
+function myMashapeGet(req, res, url, contentType){
+    unirest.get(url)
+	.header(config.apiKeyName, config.apiKeyValue)
+	.header("Accept", contentType)
+	.end(function(result) {
+		console.log("\nstatus:\n", result.status, 
+			    "\nheaders:\n", result.headers, 
+			    "\nbody:\n", ( result.headers["content-type"].substring(0, 5) == "image" 
+					   ? "<IMAGE>"
+					   : result.body
+					   ) 
+			    );
+	    })
+	.pipe(res);
+}
+
+//process.exit(0);
 
 app.get('*', function (req, res) {
 	var interestingBits = {
@@ -91,33 +139,25 @@ app.get('*', function (req, res) {
 	mashapeURL(req, config)
 	res.status(200).send("hello");
 	/*** END WHILE DEBUGGING ***/
-	var url = mashapeURL(req, config);
-	console.log("Querying the url:\n", url);
-	unirest.get(url)
-	    .header(config.apiKeyName, config.apiKeyValue)
-	    .header("Accept", config.contentType)
-	    .end(function(result) {
-		    console.log("\nstatus:\n", result.status, 
-				"\nheaders:\n", result.headers, 
-				"\nbody:\n", ( result.headers["content-type"].substring(0, 5) == "image" 
-					       ? "<IMAGE>"
-					       : result.body
-					       ) 
-				);
-		    //res.setHeader( "content-type", result.headers["content-type"] )
-		    //res.type('jpeg');
-		    /*		    res.status(result.status)
-			.send(result.body); //json(result.body)
-		    */
-		}).pipe(res);
+
+	/*
+	var yodaFull = myMashapeURL(yodaURL, ["Ted Cruz is annoyingly smart."]);
+	console.log("Querying the url:\n", yodaFull);
+	myMashapeGet(req, res, yodaFull, yodaContentType);
+	*/
+
+	/*
+	var sentimentFull =  myMashapeURL(sentimentURL,  ["Ted Cruz is annoyingly smart."]);
+	console.log("Querying the url:\n", sentimentFull);
+	myMashapeGet(req, res, sentimentFull, sentimentContentType);
+	*/
+
+	var memeFull = myMashapeURL(memeURL, ["Darth Maul", "Ted Cruz is", "annoyingly smart"]);
+	console.log("Querying the url:\n", memeFull);
+	myMashapeGet(req, res, memeFull, memeContentType);
     });
 
 var server = app.listen(port, function () {
-	//	var host = server.address().address;
-	//	var port = server.address().port;
-	//	console.log('REDIRECT app listening at http://%s:%s', host, port);
-	//	console.log('REDIRECTING ALL TRAFFIC TO ', REDIRECT_IP);
 	console.log("STARTING UP");
 	
 	});
-

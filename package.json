@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/tzaffi/yodamemer",
   "devDependencies": {
-    "express": "^4.12.4"
+    "express": "^4.12.4",
+    "unirest": "^0.4.2"
   }
 }
