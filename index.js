@@ -21,50 +21,10 @@
  *
  *************/
 
-//var _ = require('lodash');
-//var querystring = require('querystring');
 var express = require('express');
 var unirest = require('unirest');
 var app = express();
 
-/**
- * Process the request, pass along the relevant info to mashape,
- * and report back the results.
- * Different cases depending on whether config.multipleParams
- * is true or false.
- * if config.multipleParams:
- *    split the req.url using "/" as separator into parameters
- *    text process each of these 
- *    concatenate config.urlDefault + the above
- *    append ?param1=value1&param2=value2 with values taken from the above
- * else:
- *    just append ?theUrlParam=the text processed request url
-function mashapeURL(req, config){
-    var url;
-    if(config.multipleParams){
-	console.log("Considering multiple params");
-	var params = req.url.split("/");
-	params.splice(0,1); //get rid of first empty string since url starts with "/"
-	//	console.log("Are these the guys????", params);
-	params = _.map(params, _.flow(mashapeTexterize,decodeURI))
-        //	console.log("How about these????", params);
-	params = config.urlDefault.concat(params);
-	//	console.log("READY NOW???", params);
-	var zipped = _.zip(config.urlParams, params);
-	var paramObj = {};
-	_.map(zipped, function(x){ return paramObj[x[0]] = x[1] });
-	console.log("paramObj:\n", paramObj);
-	url = config.url + "?" + querystring.stringify(paramObj);
-	//console.log("MUST BE NOW!!!!!!!!", url);
-    } else {
-	console.log("Only a single param");
-	var preText = mashapeTexterize(decodeURI(req.url.substring(1)));
-	console.log("preText: ", preText);
-	url = config.url + "?" + config.urlParams + "=" + preText;
-    }
-    return url;
-}
-**/
 
 function myMashapeURL(base, params){
     return [base].concat(params).join("/")
@@ -84,46 +44,48 @@ var yodaContentType = "text/plain";
 var sentimentContentType = "application/json";
 var memeContentType = "image/jpeg";
 
-console.log("process.argv: ", process.argv);
-console.log("Starting intermediator on port ", port);
-console.log("Yoda API URL is: ", yodaURL);
-console.log("Yoda content type is: ", yodaContentType);
+var test = false;
+if(test){
+    console.log("process.argv: ", process.argv);
+    console.log("Starting intermediator on port ", port);
+    console.log("Yoda API URL is: ", yodaURL);
+    console.log("Yoda content type is: ", yodaContentType);
+    
+    console.log("Sentiment API URL is: ", sentimentURL);
+    console.log("Sentiment content type is: ", sentimentContentType);
+    
+    console.log("Meme API URL is: ", memeURL);
+    console.log("Meme content type is: ", memeContentType);
+    
+    console.log("Configuration ", configPath, " says:\n", config);
+    
+    console.log("TESTING myMashapeURL() with ", yodaURL, " and ", ["Ted Cruz is annoyingly smart."]);
+    console.log( "yodaURL is: ", myMashapeURL(yodaURL,  ["Ted Cruz is annoyingly smart."]) );
+    
+    console.log("TESTING myMashapeURL() with ", sentimentURL, " and ", ["Ted Cruz is annoyingly smart."]);
+    console.log( "sentimentURL is: ", myMashapeURL(sentimentURL,  ["Ted Cruz is annoyingly smart."]) );
+    
+    console.log("TESTING myMashapeURL() with ", memeURL, " and ", ["Darth Maul", "Ted Cruz is", "annoyingly smart"]);
+    console.log( "memeURL is: ", myMashapeURL(memeURL, ["Darth Maul", "Ted Cruz is", "annoyingly smart"]) );
+}
 
-console.log("Sentiment API URL is: ", sentimentURL);
-console.log("Sentiment content type is: ", sentimentContentType);
-
-console.log("Meme API URL is: ", memeURL);
-console.log("Meme content type is: ", memeContentType);
-
-console.log("Configuration ", configPath, " says:\n", config);
-
-
-console.log("TESTING myMashapeURL() with ", yodaURL, " and ", ["Ted Cruz is annoyingly smart."]);
-console.log( "yodaURL is: ", myMashapeURL(yodaURL,  ["Ted Cruz is annoyingly smart."]) );
-
-console.log("TESTING myMashapeURL() with ", sentimentURL, " and ", ["Ted Cruz is annoyingly smart."]);
-console.log( "sentimentURL is: ", myMashapeURL(sentimentURL,  ["Ted Cruz is annoyingly smart."]) );
-
-console.log("TESTING myMashapeURL() with ", memeURL, " and ", ["Darth Maul", "Ted Cruz is", "annoyingly smart"]);
-console.log( "memeURL is: ", myMashapeURL(memeURL, ["Darth Maul", "Ted Cruz is", "annoyingly smart"]) );
-
-function myMashapeGet(req, res, url, contentType){
-    unirest.get(url)
+function myMashapeGet(req, res, url, contentType, endFunc){
+    return unirest.get(url)
 	.header(config.apiKeyName, config.apiKeyValue)
 	.header("Accept", contentType)
-	.end(function(result) {
-		console.log("\nstatus:\n", result.status, 
-			    "\nheaders:\n", result.headers, 
-			    "\nbody:\n", ( result.headers["content-type"].substring(0, 5) == "image" 
-					   ? "<IMAGE>"
-					   : result.body
-					   ) 
-			    );
-	    })
-	.pipe(res);
+	.end(endFunc);
 }
 
 //process.exit(0);
+function responseLogger(result) {
+    console.log("\nstatus:\n", result.status, 
+		"\nheaders:\n", result.headers, 
+		"\nbody:\n", ( result.headers["content-type"].substring(0, 5) == "image" 
+			       ? "<IMAGE>"
+			       : result.body
+			       ) 
+		);
+}
 
 app.get('*', function (req, res) {
 	var interestingBits = {
@@ -135,29 +97,48 @@ app.get('*', function (req, res) {
 	};
 	console.log("interesting bits\n", interestingBits);
 	
-	/*** WHILE DEBUGGING *** /
-	mashapeURL(req, config)
-	res.status(200).send("hello");
-	/*** END WHILE DEBUGGING ***/
+	var sentence = req.url.substring(1);
+	console.log('Sending forth "', sentence, '"');
+	var urlOne = "https://poker.p.mashape.com/index.php?players=4";
 
-	/*
-	var yodaFull = myMashapeURL(yodaURL, ["Ted Cruz is annoyingly smart."]);
-	console.log("Querying the url:\n", yodaFull);
-	myMashapeGet(req, res, yodaFull, yodaContentType);
-	*/
+	var sentimentFullURL =  myMashapeURL(sentimentURL,  [sentence]);
+	var yodaFullURL = myMashapeURL(yodaURL, [sentence]);
 
-	/*
-	var sentimentFull =  myMashapeURL(sentimentURL,  ["Ted Cruz is annoyingly smart."]);
-	console.log("Querying the url:\n", sentimentFull);
-	myMashapeGet(req, res, sentimentFull, sentimentContentType);
-	*/
+	console.log("Querying the url:\n", sentimentFullURL);
+	unirest.get(sentimentFullURL)
+	    .header(config.apiKeyName, config.apiKeyValue)
+	    .header("Accept", sentimentContentType)
+	    .end(function(sentimentResponse){
+		    responseLogger(sentimentResponse);
+		    var sentimentScore = sentimentResponse.body["sentiment-score"];
+		    console.log("sentimentScore: ", sentimentScore);
 
-	var memeFull = myMashapeURL(memeURL, ["Darth Maul", "Ted Cruz is", "annoyingly smart"]);
-	console.log("Querying the url:\n", memeFull);
-	myMashapeGet(req, res, memeFull, memeContentType);
+		    console.log("Querying the url:\n", yodaFullURL);
+		    unirest.get(yodaFullURL)
+			.header(config.apiKeyName, config.apiKeyValue)
+			.header("Accept", yodaContentType)
+			.end(function(yodaResponse){
+				responseLogger(yodaResponse);
+				var yodaSentence = yodaResponse.body;
+				//remove extra spaces:
+				yodaSentence = yodaSentence.replace(/ +(?= )/g,'');
+				console.log("yodaSentence: ", yodaSentence);
+				var memeImage = (sentimentScore > 0 ? "Advice Yoda" : "Darth Maul");
+				var yodaWords2 = yodaSentence.split(" ");
+				var yodaWords1 = yodaWords2.splice(0, yodaWords2.length/2);
+				var memeArray = [memeImage, yodaWords1.join(' '), yodaWords2.join(' ')];
+				var memeFullURL = myMashapeURL(memeURL, memeArray);
+				console.log("Querying the url:\n", memeFullURL);
+				unirest.get(memeFullURL)
+				    .header(config.apiKeyName, config.apiKeyValue)
+				    .header("Accept", memeContentType)
+				    .end(function(memeResponse){
+					    responseLogger(memeResponse);
+					}).pipe(res);
+			    });
+		});
     });
-
+		
 var server = app.listen(port, function () {
 	console.log("STARTING UP");
-	
-	});
+    });
